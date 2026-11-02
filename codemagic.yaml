@@ -1,0 +1,51 @@
+
+workflows:
+  binslookup-ios:
+    name: BinsLookup iOS - TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: BinsLookupASC
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.binslookup.ios
+
+      vars:
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+
+      node: 22
+      xcode: latest
+
+    scripts:
+      - name: Install Node dependencies
+        script: |
+          npm ci
+
+      - name: Synchronize Capacitor
+        script: |
+          npx cap sync ios
+
+      - name: Configure iOS signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Build BinsLookup IPA
+        script: |
+          cd ios/App
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - ios/App/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
